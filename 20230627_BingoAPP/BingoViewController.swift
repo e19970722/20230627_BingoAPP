@@ -9,12 +9,13 @@ import UIKit
 
 class BingoViewController: UIViewController {
 
-    //放按鈕的容器
+    //Bingo盤 容器
     let numberPadView: UIView = {
        let holder = UIView()
         return holder
     }()
     
+    //遊戲名稱標題
     let gameTitle: UILabel = {
         let label = UILabel()
         label.textAlignment = .center
@@ -35,17 +36,6 @@ class BingoViewController: UIViewController {
         return label
     }()
     
-    //Bingo Number 機器產生
-    let resetLabel: UILabel = {
-        let label = UILabel()
-        label.textAlignment = .center
-        label.numberOfLines = 0
-        label.text = "16"
-        label.textColor = .black
-        label.font = .systemFont(ofSize: 18, weight: .bold)
-        return label
-    }()
-    
     //重置按鈕，每按一次就會更新亂數
     let resetButton: UIButton = {
        let button = UIButton()
@@ -60,9 +50,9 @@ class BingoViewController: UIViewController {
     //=======================================//
     
     //幾*幾的Bingo盤
-    var numberOfRows = 5
+    var numberOfRows = 3
     
-    //紀錄有沒有被按過的2D Array
+    //紀錄按鈕有沒有被按過的2D Array，有按過就是1，沒按過就是0
     var recordArr = [[Int]]()
     
     //亂數的頂端
@@ -72,10 +62,10 @@ class BingoViewController: UIViewController {
     var bingoLines = 0
     var linesWin = 2
     
-    //機器產生的Array
+    //機器抽出哪些數字
     var machineNumArr = [String]()
     
-    //使用者的Array
+    //使用者選中哪些數字
     var userNumArr = [String]()
     
     //按鈕間距
@@ -102,13 +92,11 @@ class BingoViewController: UIViewController {
         view.addSubview(machineLabel)
         view.addSubview(resetButton)
         
-        
-        
-        
-        setNumberPad(numberOfRows: numberOfRows)
-        
         //Bingo盤
         view.addSubview(numberPadView)
+        
+        //Bingo盤上的按鈕
+        setNumberPad(numberOfRows: numberOfRows)
         
         //重置按鈕
         resetButton.addTarget(self, action: #selector(resetButtonPressed), for: .touchUpInside)
@@ -150,8 +138,6 @@ class BingoViewController: UIViewController {
             numberPadView.widthAnchor.constraint(equalToConstant: view.frame.size.width),
             numberPadView.heightAnchor.constraint(equalToConstant: view.frame.size.width)
         ])
-        
-        
         
     }
     
@@ -198,14 +184,14 @@ class BingoViewController: UIViewController {
         //產生亂數1-25
         var randomNum = String(Int.random(in: 1...upperRange))
         
-        //不要重複
+        //不要和選過的數字重複
         while machineNumArr.contains(randomNum) {
             randomNum = String(Int.random(in: 1...upperRange))
         }
         machineNumArr.append(String(randomNum))
         machineLabel.text = "\(randomNum)"
         
-        //把user有該數字的按鈕註記
+        //如果數字和Bingo盤上的數字一樣，也標註為選過了
         if userNumArr.contains(randomNum){
             
             let markedIndex = userNumArr.firstIndex(where: {$0 == randomNum})!
@@ -229,10 +215,12 @@ class BingoViewController: UIViewController {
     //每當按下重置按鈕，Bingo盤上的數字就會重新產生
     @objc func resetButtonPressed() {
         bingoLines = 0
+        forwardDidConnect = false
+        backDidConnect = false
         machineNumArr = []
         userNumArr = []
         
-        //紀錄連線的空2D Array
+        //產生全部為0的2D Array，用於紀錄按鈕有沒有被選過
         recordArr = [[Int]](repeating: [Int](repeating: 0, count: numberOfRows), count: numberOfRows)
         
         generateRandomNum()
@@ -247,7 +235,7 @@ class BingoViewController: UIViewController {
 
         for i in 0..<buttons.count {
 
-            //不要重複
+            //和我已經選過的數字不要重複
             while userNumArr.contains(randomNum) {
                 randomNum = String(Int.random(in: 1...upperRange))
             }
@@ -273,14 +261,17 @@ class BingoViewController: UIViewController {
             
             sender.backgroundColor = .lightGray
             
+            //我選過的數字，也加到機器的Array裡
             if let buttonTitle = sender.titleLabel?.text {
                 machineNumArr.append(buttonTitle)
             }
             
             recordArr[row][col] = 1
+            
+            //檢查有沒有Bingo連線
             checkBingo(row: row, col: col)
             
-            // 使用者選完，再換機器給新數字
+            //使用者選完，再換機器給新數字
             generateMachineRandom()
         }
     }
@@ -301,6 +292,7 @@ class BingoViewController: UIViewController {
                         horiLine += 1
                         if horiLine == numberOfRows {
                             bingoLines += 1
+                            print("水平線 +1")
                         }
                     }
                 }
@@ -311,6 +303,7 @@ class BingoViewController: UIViewController {
                         vertLine += 1
                         if vertLine == numberOfRows {
                             bingoLines += 1
+                            print("垂直線 +1")
                         }
                     }
                 }
@@ -323,6 +316,7 @@ class BingoViewController: UIViewController {
                             if forwardSlash == numberOfRows  {
                                 bingoLines += 1
                                 forwardDidConnect = true
+                                print("正斜線 +1")
                             }
                         }
                     }
@@ -337,12 +331,16 @@ class BingoViewController: UIViewController {
                             if backSlash == numberOfRows {
                                 bingoLines += 1
                                 backDidConnect = true
+                                print("反斜線 +1")
                             }
                         }
                     }
                 }
             }
         }
+        
+        print(recordArr)
+        print("累計：", bingoLines)
         
         //跳出你贏了的通知
         if bingoLines >= linesWin {
